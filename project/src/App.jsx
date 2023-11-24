@@ -4,22 +4,58 @@ import Card from './components/Card';
 
 const App = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(3); 
+  const [itemsPerPage] = useState(3);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortedData, setSortedData] = useState([]);
+  const [sortAsc, setSortAsc] = useState(true);
+  const { data, isLoading, error } = useFetchData();
 
-  const { data, isLoading, error } = useFetchData(); 
+  const filteredData = useMemo(() => {
+    if (!searchTerm || searchTerm === '') {
+      return data || [];
+    } else {
+      return data.filter(item =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+  }, [data, searchTerm]);
+
+  const sortData = () => {
+    let sorted;
+    if (sortAsc) {
+      sorted = [...filteredData].sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      sorted = [...filteredData].sort((a, b) => b.name.localeCompare(a.name));
+    }
+    setSortedData(sorted);
+  };
+
+  useEffect(() => {
+    sortData();
+  }, [filteredData, sortAsc]);
+
+  const handleSearch = (event) => {
+    setSearchTerm(event.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleSort = () => {
+    setSortAsc(!sortAsc); 
+    setCurrentPage(1); 
+  };
 
   const pageNumbers = useMemo(() => {
-    if (!data) return [];
-    return Array.from({ length: Math.ceil(data.length / itemsPerPage) }, (_, index) => index + 1);
-  }, [data, itemsPerPage]);
+    if (!sortedData) return [];
+    return Array.from({ length: Math.ceil(sortedData.length / itemsPerPage) }, (_, index) => index + 1);
+  }, [sortedData, itemsPerPage]);
 
   const lastIndex = currentPage * itemsPerPage;
   const firstIndex = lastIndex - itemsPerPage;
 
   const currentItems = useMemo(() => {
-    if (!data) return [];
-    return data.slice(firstIndex, lastIndex);
-  }, [data, currentPage, itemsPerPage, firstIndex, lastIndex]);
+    if (!sortedData) return [];
+    return sortedData.slice(firstIndex, lastIndex);
+  }, [sortedData, currentPage, itemsPerPage, firstIndex, lastIndex]);
 
   const handlePageClick = (pageNumber) => {
     setCurrentPage(pageNumber);
@@ -34,25 +70,27 @@ const App = () => {
   }
 
   return (
-    <div style={{maxWidth: "50%", marginLeft: "auto", marginRight: "auto", paddingTop: "150px"}}>
-      <div style={{width: "100%", display: "flex", gap: "150px"}} className="data-container">
-        {currentItems.map((item) => (
-          <Card key={item.id} item={item} /> 
-        ))}
-      </div>
+    <>
+      <input type="text" placeholder="Search..." value={searchTerm} onChange={handleSearch} />
+      <button onClick={handleSort} style={{ margin: '10px' }}>
+        {sortAsc ? 'Sort A-Z' : 'Sort Z-A'}
+      </button>
+      <div style={{ maxWidth: '50%', marginLeft: 'auto', marginRight: 'auto', paddingTop: '150px' }}>
+        <div style={{ width: '100%', display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }} className="data-container">
+          {currentItems.map((item) => (
+            <Card key={item.id} item={item} />
+          ))}
+        </div>
 
-      <div style={{width: "170px", marginLeft: "auto", marginRight: "auto", marginTop: "50px",display: "flex", justifyContent: "space-between"}} className="pagination">
-        {pageNumbers.map((number) => (
-          <button style={{width: "50px", height: "50px", border: "none", cursor: "pointer"}}
-            key={number}
-            onClick={() => handlePageClick(number)}
-            className={currentPage === number ? 'active' : ''}
-          >
-            {number}
-          </button>
-        ))}
+        <div style={{ width: 'fit-content', margin: '20px auto', display: 'flex', justifyContent: 'center' }} className="pagination">
+          {pageNumbers.map((number) => (
+            <button style={{ width: '30px', height: '30px', border: 'none', cursor: 'pointer', background: currentPage === number ? '#333' : 'transparent', color: currentPage === number ? '#fff' : '#333' }} key={number} onClick={() => handlePageClick(number)}>
+              {number}
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
